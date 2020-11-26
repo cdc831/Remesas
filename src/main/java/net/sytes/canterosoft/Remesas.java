@@ -61,8 +61,8 @@ public class Remesas {
         rem.setFecha("2020-10-27");
         rem.setAuthUser("prosegurws");
         rem.setAuthPass("asRExrQQ5FaQWXcEg2tf");
-        rem.setProxy("proxy.emea.prosegur.local");
-//        rem.setProxy("AR_PROXY.LATAM1.PROSEGUR.LOCAL");
+        //rem.setProxy("proxy.emea.prosegur.local");
+        rem.setProxy("AR_PROXY.LATAM1.PROSEGUR.LOCAL");
         rem.setPuerto(8080);
         rem.setUrl("https://trs005.tusrecibos.com.py/rest/mtess/remesas/service.php");
         rem.enviaJsonRemesaPost();
