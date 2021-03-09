@@ -31,254 +31,249 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
-
 public class Remesas {
 
-    private JsonObject ObjetoPrincipal;
-    private Integer empresa;
-    private String fecha;
-    private String nombre;
-    private String url;
-    private String authUser;
-    private String authPass;
-    private String codRespuesta;
-    private String mensajeRespuesta;
-    private Integer idRemesaRespuesta;
-    private String proxy;
-    private Integer puerto;
-    private String autorizacionToken;
+	private JsonObject ObjetoPrincipal;
+	private Integer empresa;
+	private String fecha;
+	private String nombre;
+	private String url;
+	private String authUser;
+	private String authPass;
+	private String codRespuesta;
+	private String mensajeRespuesta;
+	private Integer idRemesaRespuesta;
+	private String proxy;
+	private Integer puerto;
+	private String autorizacionToken;
 
-    public Remesas(){
-        ObjetoPrincipal = new JsonObject();
-        autorizacionToken = "";
-    }
+	public Remesas() {
+		ObjetoPrincipal = new JsonObject();
+		autorizacionToken = "";
+	}
 
-    public static void main(String args[]){
-        Remesas rem = new Remesas();
-//        rem.ping();
-        rem.setEmpresa(29);
-        rem.setNombre("PruebaServicio Cristian  ");
-        rem.setFecha("2020-10-27");
-        rem.setAuthUser("prosegurws");
-        rem.setAuthPass("asRExrQQ5FaQWXcEg2tf");
-        //rem.setProxy("proxy.emea.prosegur.local");
-        rem.setProxy("AR_PROXY.LATAM1.PROSEGUR.LOCAL");
-        rem.setPuerto(8080);
-        rem.setUrl("https://trs005.tusrecibos.com.py/rest/mtess/remesas/service.php");
-        rem.enviaJsonRemesaPost();
-        //rem.enviaJsonRemesaPostSinProxy();
-        System.out.println("Codigo: " + rem.getCodRespuesta());
-        System.out.println("Descripcion: " + rem.getMensajeRespuesta());
-        System.out.println("RemesaID: " + rem.getIdRemesaRespuesta());
-    }
+	public boolean enviaJsonRemesaPost() {
+		String informacion = "{pre-envio}";
+		boolean correcto = false;
+		// HttpClient httpClient = HttpClientBuilder.create().build();
+		HttpClient httpClient = HttpClientBuilder.create().setProxy(new HttpHost(getProxy(), getPuerto())).build();
+		try {
+			httpClient = getAllSSLClient();
+		} catch (KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
+			e.printStackTrace();
+		}
+		try {
+			String encoding = Base64.getEncoder()
+					.encodeToString((this.authUser + ":" + this.authPass).getBytes("UTF-8"));
+			HttpPost request = new HttpPost(this.url);
+			request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
+			StringEntity params = new StringEntity(devuelveJsonRemesaPost(), ContentType.APPLICATION_JSON);
 
-    public void enviaJsonRemesaPostSinProxy() {
-        String informacion = "{pre-envio}";
-        HttpClient httpClient = HttpClientBuilder.create().build();
-        try {
-            String encoding = Base64.getEncoder().encodeToString((this.authUser + ":" + this.authPass).getBytes("UTF-8"));
-            HttpPost request = new HttpPost(this.url);
-            request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
+			// Token del Proxy de Prosegur
+			if (this.autorizacionToken.length() > 0) {
+				request.addHeader(HttpHeaders.AUTHORIZATION, this.autorizacionToken);
+			}
 
-            StringEntity params = new StringEntity(devuelveJsonRemesaPost(), ContentType.APPLICATION_JSON);
-            request.setEntity(params);
+			request.setEntity(params);
 
-            HttpResponse response = httpClient.execute(request);
+			HttpResponse response = httpClient.execute(request);
 
-            HttpEntity responseEntity = response.getEntity();
-            informacion = "{post-envio}";
-            if(responseEntity!=null) {
-                informacion = EntityUtils.toString(responseEntity);
-                procesarRespuesta(informacion);
-            }else{
-                setCodRespuesta("555");
-                setMensajeRespuesta("Error: responseEntity es nulo, esto ocurro al tratar de obtener la respues del servicio");
-                setIdRemesaRespuesta(0);
-            }
-            EntityUtils.consume(responseEntity);
-            ((Closeable) response).close();
-        } catch (Exception ex) {
-            informacion = "{error-envio post sin proxy:" + ex.getMessage() + "}";
-            ex.printStackTrace();
-        }
-    }
+			HttpEntity responseEntity = response.getEntity();
+			informacion = "{post-envio}";
+			if (responseEntity != null) {
+				informacion = EntityUtils.toString(responseEntity);
+				procesarRespuesta(informacion);
+				correcto = true;
+			} else {
+				setCodRespuesta("555");
+				setMensajeRespuesta(
+						"Error: responseEntity es nulo, esto ocurro al tratar de obtener la respues del servicio");
+				setIdRemesaRespuesta(0);
+			}
+			EntityUtils.consume(responseEntity);
+			((Closeable) response).close();
+		} catch (Exception ex) {
+			informacion = "{error-envio post sin proxy:" + ex.getMessage() + "}";
+			ex.printStackTrace();
+		}
 
-    public void enviaJsonRemesaPost() {
-        String informacion = "{pre-envio}";
-        //HttpClient httpClient = HttpClientBuilder.create().build();
-        HttpClient httpClient = HttpClientBuilder.create().setProxy(new HttpHost(getProxy(),getPuerto())).build();
-        try {
-            httpClient = getAllSSLClient();
-        } catch (KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
-            e.printStackTrace();
-        }
-        try {
-            String encoding = Base64.getEncoder().encodeToString((this.authUser + ":" + this.authPass).getBytes("UTF-8"));
-            HttpPost request = new HttpPost(this.url);
-            request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
-            StringEntity params = new StringEntity(devuelveJsonRemesaPost(), ContentType.APPLICATION_JSON);
+		return correcto;
+	}
 
-            // Token del Proxy de Prosegur
-            if (this.autorizacionToken.length() > 0 ) {
-                request.addHeader(HttpHeaders.AUTHORIZATION, this.autorizacionToken);
-            }
+	public String devuelveJsonRemesaPost() {
 
-            request.setEntity(params);
+		ObjetoPrincipal.addProperty("empresaCod", this.empresa);
+		ObjetoPrincipal.addProperty("fechaRegistro", String.valueOf(this.fecha));
+		ObjetoPrincipal.addProperty("remesaNombre", this.nombre);
 
-            HttpResponse response = httpClient.execute(request);
+		Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+		return gson.toJson(ObjetoPrincipal);
+	}
 
-            HttpEntity responseEntity = response.getEntity();
-            informacion = "{post-envio}";
-            if(responseEntity!=null) {
-                informacion = EntityUtils.toString(responseEntity);
-                procesarRespuesta(informacion);
-            }else{
-                setCodRespuesta("555");
-                setMensajeRespuesta("Error: responseEntity es nulo, esto ocurro al tratar de obtener la respues del servicio");
-                setIdRemesaRespuesta(0);
-            }
-            EntityUtils.consume(responseEntity);
-            ((Closeable) response).close();
-        } catch (Exception ex) {
-            informacion = "{error-envio post sin proxy:" + ex.getMessage() + "}";
-            ex.printStackTrace();
-        }
-    }
+	public void procesarRespuesta(String respuestaApi) {
+		JsonObject jsonObject = obtenerJsonRepuesta(respuestaApi);
+		try {
+			setCodRespuesta(jsonObject.get("code").getAsString());
+			setMensajeRespuesta(jsonObject.get("description").getAsString());
+			//En caso que sea respuesta 2 significa que la remesa ya existe para esta empresa y con el nombre estipulado
+			if (getCodRespuesta().equals("2")) {
+				setIdRemesaRespuesta(0);
+			}else {
+				if (jsonObject.get("remesaCod") == null) {
+					setIdRemesaRespuesta(0);
+				} else {
+					setIdRemesaRespuesta(jsonObject.get("remesaCod").getAsInt());
+				}
+			}
+		} catch (Exception e) {
+			setCodRespuesta("555");
+			setMensajeRespuesta("Error: " + e.getMessage());
+			setIdRemesaRespuesta(0);
+		}
 
-    public String devuelveJsonRemesaPost(){
+	}
 
-        ObjetoPrincipal.addProperty("empresaCod",this.empresa);
-        ObjetoPrincipal.addProperty("fechaRegistro", String.valueOf(this.fecha));
-        ObjetoPrincipal.addProperty("remesaNombre",this.nombre);
+	public JsonObject obtenerJsonRepuesta(String repuestaApi) {
+		JsonParser parser = new JsonParser();
+		JsonElement unJson = parser.parse(repuestaApi);
+		return unJson.getAsJsonObject();
+	}
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-        return gson.toJson(ObjetoPrincipal);
-    }
+	/*
+	 * * Metodo utilizado para ver si las variables estan cargadas
+	 */
+	public void mostrarVariables() {
+		JOptionPane.showMessageDialog(null, this.codRespuesta);
+		JOptionPane.showMessageDialog(null, this.mensajeRespuesta);
+		JOptionPane.showMessageDialog(null, this.idRemesaRespuesta);
+	}
 
-    public void procesarRespuesta(String respuestaApi){
-        JsonObject jsonObject = obtenerJsonRepuesta(respuestaApi);
-        try{
-            setCodRespuesta(jsonObject.get("code").getAsString());
-            setMensajeRespuesta(jsonObject.get("description").getAsString());
-            if (jsonObject.get("remesaCod") == null) {
-                setIdRemesaRespuesta(0);
-            }else{
-                setIdRemesaRespuesta(jsonObject.get("remesaCod").getAsInt());
-            }
-        }catch (Exception e){
-            setCodRespuesta("555");
-            setMensajeRespuesta("Error: " + e.getMessage());
-            setIdRemesaRespuesta(0);
-        }
+	public static HttpClient getAllSSLClient()
+			throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
+		TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+			@Override
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
 
-    }
+			@Override
+			public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
 
-    public JsonObject obtenerJsonRepuesta(String repuestaApi){
-        JsonParser parser = new JsonParser();
-        JsonElement unJson = parser.parse(repuestaApi);
-        return unJson.getAsJsonObject();
-    }
+			@Override
+			public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
+		} };
+		SSLContext context = SSLContext.getInstance("SSL");
+		context.init(null, trustAllCerts, null);
 
-    /*
-    * * Metodo utilizado para ver si las variables estan cargadas
-    */
-    public void mostrarVariables(){
-        JOptionPane.showMessageDialog(null,this.codRespuesta);
-        JOptionPane.showMessageDialog(null,this.mensajeRespuesta);
-        JOptionPane.showMessageDialog(null,this.idRemesaRespuesta);
-    }
+		HttpClientBuilder builder = HttpClientBuilder.create();
+		SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(context,
+				SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+		builder.setSSLSocketFactory(sslConnectionFactory);
 
-    public static HttpClient getAllSSLClient() throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-        TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
-            @Override
-            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-            @Override
-            public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-            }
-            @Override
-            public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-            }
-        }};
-        SSLContext context = SSLContext.getInstance("SSL");
-        context.init(null, trustAllCerts, null);
+		PlainConnectionSocketFactory plainConnectionSocketFactory = new PlainConnectionSocketFactory();
+		Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
+				.register("https", sslConnectionFactory).register("http", plainConnectionSocketFactory).build();
 
-        HttpClientBuilder builder = HttpClientBuilder.create();
-        SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(context, SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-        builder.setSSLSocketFactory(sslConnectionFactory);
+		HttpClientConnectionManager ccm = new BasicHttpClientConnectionManager(registry);
+		builder.setConnectionManager(ccm);
+		return builder.build();
+	}
 
-        PlainConnectionSocketFactory plainConnectionSocketFactory = new PlainConnectionSocketFactory();
-        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("https", sslConnectionFactory)
-                .register("http", plainConnectionSocketFactory)
-                .build();
+	public Integer getEmpresa() {
+		return this.empresa;
+	}
 
-        HttpClientConnectionManager ccm = new BasicHttpClientConnectionManager(registry);
-        builder.setConnectionManager(ccm);
-        return builder.build();
-    }
+	public void setEmpresa(Integer empresa) {
+		this.empresa = empresa;
+	}
 
-    public boolean ping(){
-        // Para probar haciendo ping y chequear que funcione el host
-        String ipAddress = "181.40.66.32";
-        try {
-            InetAddress inet = InetAddress.getByName(ipAddress);
-            JOptionPane.showMessageDialog(null,"Envío de solicitud de ping a " + ipAddress);
-            JOptionPane.showMessageDialog(null,inet.isReachable(5000) ? "El host es accesible" : "El host es inaccesible");
-        }catch(Exception e){
-            JOptionPane.showMessageDialog(null,"Ocurrio un error al tratar de conseguir la ip.");
-            System.out.println(e.getMessage());
-        }
-        return true;
-    }
-    public Integer getEmpresa() { return this.empresa; }
+	public String getFecha() {
+		return this.fecha;
+	}
 
-    public void setEmpresa(Integer empresa) { this.empresa = empresa; }
+	public void setFecha(String fecha) {
+		this.fecha = fecha;
+	}
 
-    public String getFecha() { return this.fecha; }
+	public String getNombre() {
+		return this.nombre;
+	}
 
-    public void setFecha(String fecha) {this.fecha = fecha; }
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
+	}
 
-    public String getNombre() { return this.nombre; }
+	public String getUrl() {
+		return this.url;
+	}
 
-    public void setNombre(String nombre) { this.nombre = nombre; }
+	public void setUrl(String url) {
+		this.url = url;
+	}
 
-    public String getUrl() { return this.url; }
+	public String getAuthUser() {
+		return this.authUser;
+	}
 
-    public void setUrl(String url) { this.url = url; }
+	public void setAuthUser(String authUser) {
+		this.authUser = authUser;
+	}
 
-    public String getAuthUser() {return this.authUser; }
+	public String getAuthPass() {
+		return this.authPass;
+	}
 
-    public void setAuthUser(String authUser) {this.authUser = authUser; }
+	public void setAuthPass(String authPass) {
+		this.authPass = authPass;
+	}
 
-    public String getAuthPass() {return this.authPass; }
+	public String getCodRespuesta() {
+		return this.codRespuesta;
+	}
 
-    public void setAuthPass(String authPass) {this.authPass = authPass; }
+	public void setCodRespuesta(String codRespuesta) {
+		this.codRespuesta = codRespuesta;
+	}
 
-    public String getCodRespuesta() { return this.codRespuesta; }
+	public String getMensajeRespuesta() {
+		return this.mensajeRespuesta;
+	}
 
-    public void setCodRespuesta(String codRespuesta) { this.codRespuesta = codRespuesta; }
+	public void setMensajeRespuesta(String mensajeRespuesta) {
+		this.mensajeRespuesta = mensajeRespuesta;
+	}
 
-    public String getMensajeRespuesta() { return this.mensajeRespuesta; }
+	public Integer getIdRemesaRespuesta() {
+		return this.idRemesaRespuesta;
+	}
 
-    public void setMensajeRespuesta(String mensajeRespuesta) { this.mensajeRespuesta = mensajeRespuesta; }
+	public void setIdRemesaRespuesta(Integer idRemesaRespuesta) {
+		this.idRemesaRespuesta = idRemesaRespuesta;
+	}
 
-    public Integer getIdRemesaRespuesta() { return this.idRemesaRespuesta; }
+	public String getProxy() {
+		return proxy;
+	}
 
-    public void setIdRemesaRespuesta(Integer idRemesaRespuesta) { this.idRemesaRespuesta = idRemesaRespuesta; }
+	public void setProxy(String proxy) {
+		this.proxy = proxy;
+	}
 
-    public String getProxy() { return proxy; }
+	public Integer getPuerto() {
+		return puerto;
+	}
 
-    public void setProxy(String proxy) { this.proxy = proxy; }
+	public void setPuerto(Integer puerto) {
+		this.puerto = puerto;
+	}
 
-    public Integer getPuerto() { return puerto; }
+	public void setAutorizacionToken(String autorizacion) {
+		this.autorizacionToken = autorizacion.replace("<char34>", "\"");
+	}
 
-    public void setPuerto(Integer puerto) { this.puerto = puerto; }
-
-    public void setAutorizacionToken(String autorizacion) {
-        this.autorizacionToken = autorizacion.replace("<char34>", "\"");
-    }
-
-    public String getAutorizacionToken() { return this.autorizacionToken; }
+	public String getAutorizacionToken() {
+		return this.autorizacionToken;
+	}
 }
