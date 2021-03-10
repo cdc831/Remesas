@@ -103,11 +103,7 @@
                         <descriptorRefs>
                             <descriptorRef>jar-with-dependencies</descriptorRef>
                         </descriptorRefs>
-                        <archive>
-                            <manifest>
-                                <mainClass>net.sytes.canterosoft.Remesas</mainClass>
-                            </manifest>
-                        </archive>
+                        
                     </configuration>
                     <executions>
                         <execution>
